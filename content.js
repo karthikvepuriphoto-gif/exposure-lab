@@ -77,6 +77,9 @@ const LESSONS = [
   text:`A <b>JPEG</b> is processed in-camera to 8 bits; clipped highlights are gone for good and pulling up shadows shows banding. A <b>RAW</b> file keeps all the sensor data (12–14 bits) with ~1 stop of hidden highlight headroom. This shot is about 2 stops overexposed.`,
   steps:[{t:'In the Body tab, drag "Edit exposure later" to −2 with JPEG: the sky stays flat grey, detail is lost.',ok:()=>!ST.raw&&ST.recover<=-1.6},
          {t:'Switch to RAW: the background highlights come back.',ok:()=>ST.raw&&ST.recover<=-1.6}]},
+ {id:'inside', title:'Inside the camera: DSLR vs mirrorless', scene:'street', setup:{mode:'M',ti:T('1/4'),ai:A('16'),qi:I('100'),tripod:true,inside:true,body:'DSLR'},
+  text:`When you press the shutter, a sequence happens in a fraction of a second. <b>DSLR</b>: a mirror sends light up to the optical viewfinder. On the full press the lens stops down to your aperture, the mirror flips up (the viewfinder goes dark), the <b>front curtain</b> opens, the sensor is exposed for the shutter time, the <b>rear curtain</b> closes, and the mirror drops back.<br><b>Mirrorless</b>: no mirror. The sensor is always on and feeds the electronic viewfinder (EVF), so you see the exposure, white balance and depth of field <i>before</i> you shoot, just like this screen. <b>Half-press</b> (hold the shutter button) focuses: you hear the AF beep and the focus box turns green.`,
+  steps:[{t:'Hold the shutter button: AF beep and a green focus box. Release to shoot and watch the inset (1/4 s is slow enough to see).',ok:()=>lessonFlag.shot},{t:'Switch Camera type to Mirrorless (More → Body) and shoot again: no mirror flip.',ok:()=>ST.body==='Mirrorless'&&lessonFlag.shot2}]},
  {id:'thirds', title:'Composition: rule of thirds', scene:'street', setup:{mode:'Av',ai:A('5.6'),grid:true},
   text:`Imagine the frame split in thirds. Placing your subject or horizon on those lines (or where they cross) usually feels more dynamic than dead center. Leave space in front of a moving subject so it has somewhere to go.`,
   steps:[{t:'Grid is on. Press the shutter when the cyclist crosses the left third line.',ok:()=>lessonFlag.shot}]}
@@ -117,22 +120,27 @@ const QUIZ = [
 ];
 const lessonFlag={};
 let CUR=null; // {type:'lesson'|'challenge', item}
-function applySetup(it){ const s=Object.assign({mode:'M',nd:0,flash:false,ec:0,tripod:false,is:true,af:'AF-S',drive:'single',raw:false,recover:0,meter:'matrix',wb:'Auto',keepSize:false,peaking:false,hss:false,warn:ST.warn},it.setup||{});
+function applySetup(it){ const s=Object.assign({inside:ST.inside,body:ST.body,mode:'M',nd:0,flash:false,ec:0,tripod:false,is:true,af:'AF-S',drive:'single',raw:false,recover:0,meter:'matrix',wb:'Auto',keepSize:false,peaking:false,hss:false,warn:ST.warn},it.setup||{});
   const keepLens = s.focal!==undefined; setScene(it.scene); Object.assign(ST,s); if(keepLens){ ST.focusS=targetDist(G.time); }
   ST.afLayer=SCENES[it.scene].focus; ST.focusS=targetDist(G.time); ST.mf=ST.focusS; for(const k in lessonFlag) delete lessonFlag[k]; prevSnap=null; afterChange('setup'); }
-function openLesson(i){ const L=LESSONS[i]; CUR={type:'lesson',i,item:L}; applySetup(L); showTab('camera'); renderCard(); }
-function openChallenge(i){ const C=CHALLENGES[i]; CUR={type:'challenge',i,item:C}; applySetup(C); showTab('camera'); renderCard(); }
-function renderCard(){ const el=$('#card'); if(!CUR){ el.innerHTML=''; el.style.display='none'; return; } el.style.display=''; const it=CUR.item;
+function openLesson(i){ const L=LESSONS[i]; CUR={type:'lesson',i,item:L}; applySetup(L); renderCard(); closeSheet(); }
+function openChallenge(i){ const C=CHALLENGES[i]; CUR={type:'challenge',i,item:C}; applySetup(C); renderCard(); closeSheet(); }
+function endCur(){ CUR=null; renderCard(); closeSheet(); }
+function renderCard(){ const el=$('#card'); $('#stLesson').style.display=CUR?'':'none'; if(!CUR){ el.innerHTML=''; $('#hint').style.display='none'; $('#vf').classList.remove('hashint'); return; } const it=CUR.item;
   if(CUR.type==='lesson'){ const n=CUR.i;
-    el.innerHTML=`<div class="card-h"><span class="pill">Lesson ${n+1}/${LESSONS.length}</span><button class="x" onclick="CUR=null;renderCard()" aria-label="Close lesson">✕</button></div><h2>${it.title}</h2><div class="lt">${it.text}</div>
+    el.innerHTML=`<div class="card-h"><span class="pill">Lesson ${n+1}/${LESSONS.length}</span><button class="btn sm" onclick="endCur()">End lesson</button></div><h2>${it.title}</h2><div class="lt">${it.text}</div>
     ${it.widget==='triangle'?triangleWidget():''}
     <h3>Try it</h3><ol class="steps">${it.steps.map((s,k)=>`<li data-k="${k}">${s.t}</li>`).join('')}</ol>
     <div class="callout"><b>What changed:</b> <span id="lessonChanged">turn a dial and I'll explain.</span></div>
     <div class="row"><button class="btn" ${n?'':'disabled'} onclick="openLesson(${n-1})">← Prev</button><button class="btn pri" ${n<LESSONS.length-1?'':'disabled'} onclick="openLesson(${n+1})">Next lesson →</button></div>`;
   } else { const done=JSON.parse(localStorage.getItem('el_ch')||'{}');
-    el.innerHTML=`<div class="card-h"><span class="pill gold">Challenge ${CUR.i+1}/${CHALLENGES.length}</span><button class="x" onclick="CUR=null;renderCard()" aria-label="Close challenge">✕</button></div><h2>${done[it.id]?'✅ ':''}${it.title}</h2><p class="lt">${it.goal}</p><p class="muted">Set up the shot, then press the shutter. I'll grade the photo.</p><div class="callout" id="chResult">Waiting for your shot…</div>
+    el.innerHTML=`<div class="card-h"><span class="pill gold">Challenge ${CUR.i+1}/${CHALLENGES.length}</span><button class="btn sm" onclick="endCur()">End challenge</button></div><h2>${done[it.id]?'✅ ':''}${it.title}</h2><p class="lt">${it.goal}</p><p class="muted">Set up the shot, then press the shutter. I'll grade the photo.</p><div class="callout" id="chResult">Waiting for your shot…</div>
     <div class="row"><button class="btn" onclick="openChallenge(${CUR.i})">↺ Reset</button><button class="btn pri" ${CUR.i<CHALLENGES.length-1?'':'disabled'} onclick="openChallenge(${CUR.i+1})">Next →</button></div>`; }
-  lessonCheck(); }
+  lessonCheck(); updHint(); }
+function updHint(msg){ const h=$('#hint'); if(!CUR){ h.style.display='none'; return; } let t=msg;
+  if(!t){ if(CUR.type==='lesson'){ const lis=$$('.steps li'); const k=lis.findIndex(li=>!li.classList.contains('done')); t= k<0 ? `✅ ${CUR.item.title}: done! Tap for the next lesson.` : `<b>${k+1}/${lis.length}</b> ${CUR.item.steps[k].t}`; }
+    else t=`🏆 ${CUR.item.goal}`; }
+  h.innerHTML=`<span class="ht">${t}</span><span class="hb">More ▴</span>`; h.style.display=''; $('#vf').classList.add('hashint'); }
 function triangleWidget(){ return `<div class="tri"><div class="tri-row"><button class="btn sm" onclick="eqTrade('t','a')">Shutter −1 stop, Aperture +1</button><button class="btn sm" onclick="eqTrade('a','t')">Aperture −1 stop, Shutter +1</button><button class="btn sm" onclick="eqTrade('q','t')">ISO +1 stop, Shutter −1</button></div>
   <svg viewBox="0 0 200 120" class="tri-svg" aria-hidden="true"><polygon points="100,8 190,112 10,112" fill="none" stroke="#ff7a45" stroke-width="2"/><text x="100" y="30" text-anchor="middle">EXPOSURE</text><text x="100" y="5" text-anchor="middle" dy="0">Shutter: motion</text><text x="18" y="108">ISO: noise</text><text x="182" y="108" text-anchor="end">Aperture: DOF</text></svg>
   <p class="muted" id="eqLine"></p></div>`; }
@@ -142,11 +150,11 @@ function eqTrade(a,b){ // a gets 1 stop LESS light (for t: faster; a: smaller), 
   // "less light": t faster(+), a smaller (+); q is more light(+)
   if(a==='q'){ mv.q(step); mv.t(step); } else { mv[a](step); mv[b==='t'?'t':'a'](-step); }
   lessonFlag.eq=true; tickSound(); afterChange('eq'); const e=$('#eqLine'); if(e) e.textContent=`Now ${SHUTTER_LABELS[ST.ti]} · f/${APERTURE_LABELS[ST.ai]} · ISO ${ISO_LABELS[ST.qi]}: same brightness, different look.`; }
-function lessonCheck(){ if(!CUR||CUR.type!=='lesson'||!G.frame) return; CUR.item.steps.forEach((s,k)=>{ let ok=false; try{ ok=s.ok(); }catch(e){} const li=$(`.steps li[data-k="${k}"]`); if(li&&ok&&!li.classList.contains('done')){ li.classList.add('done'); } });
+function lessonCheck(){ if(!CUR||CUR.type!=='lesson'||!G.frame) return; CUR.item.steps.forEach((s,k)=>{ let ok=false; try{ ok=s.ok(); }catch(e){} const li=$(`.steps li[data-k="${k}"]`); if(li&&ok&&!li.classList.contains('done')){ li.classList.add('done'); updHint(); } });
   const done=JSON.parse(localStorage.getItem('el_les')||'{}'); if($$('.steps li').length&&$$('.steps li').every(li=>li.classList.contains('done'))&&!done[CUR.item.id]){ done[CUR.item.id]=1; localStorage.setItem('el_les',JSON.stringify(done)); toast('🎉 Lesson complete!'); renderLists(); } }
 setInterval(lessonCheck,500);
-function challengeCheck(shots){ if(ST.drive==='burst') lessonFlag.burst=true; lessonFlag.shot=true; if(!CUR||CUR.type!=='challenge') return;
-  const s=shots[0]; const [ok,msg]=CUR.item.check(s,shots); const r=$('#chResult'); if(r) r.innerHTML=(ok?'✅ <b>Passed!</b> ':'❌ ')+msg+`<br><span class="muted">${exifLine(s.info)}</span>`;
+function challengeCheck(shots){ if(ST.drive==='burst') lessonFlag.burst=true; if(lessonFlag.shot&&ST.body==='Mirrorless') lessonFlag.shot2=true; lessonFlag.shot=true; if(!CUR||CUR.type!=='challenge') return;
+  const s=shots[0]; const [ok,msg]=CUR.item.check(s,shots); const r=$('#chResult'); if(r) r.innerHTML=(ok?'✅ <b>Passed!</b> ':'❌ ')+msg+`<br><span class="muted">${exifLine(s.info)}</span>`; updHint((ok?'✅ <b>Passed!</b> ':'❌ ')+msg);
   if(ok){ const d=JSON.parse(localStorage.getItem('el_ch')||'{}'); d[CUR.item.id]=1; localStorage.setItem('el_ch',JSON.stringify(d)); toast('🏆 Challenge passed: '+CUR.item.title); renderLists(); } }
 function renderLists(){ const ld=JSON.parse(localStorage.getItem('el_les')||'{}'), cd=JSON.parse(localStorage.getItem('el_ch')||'{}');
   $('#lessonList').innerHTML=LESSONS.map((l,i)=>`<button class="li" onclick="openLesson(${i})"><span class="num">${ld[l.id]?'✓':i+1}</span><span><b>${l.title}</b><small>${SCENES[l.scene].icon} ${SCENES[l.scene].name}</small></span></button>`).join('');
@@ -174,19 +182,23 @@ function renderCheat(){ const third=(arr)=>arr.map((l,i)=>`<span class="${i%3===
   <section><h3>Equivalent exposures</h3><p>All the same brightness: 1/1000 f/4 · 1/500 f/5.6 · 1/250 f/8 · 1/125 f/11 · 1/60 f/16 (ISO 100). Pick based on what should be sharp or blurred.</p>
   <p>EV₁₀₀ = log₂(N²/t) − log₂(ISO/100). Bright sun ≈ EV 15, shade ≈ 12–13, indoors ≈ 7–8, city street at night ≈ 5–7.</p></section>
   <section><h3>Modes</h3><table><tr><td>M</td><td>You set all three.</td></tr><tr><td>Av / A</td><td>You set aperture, camera sets shutter.</td></tr><tr><td>Tv / S</td><td>You set shutter, camera sets aperture.</td></tr><tr><td>P</td><td>Camera sets both, you can shift/compensate.</td></tr><tr><td>AF-S / AF-C</td><td>Focus once / keep focusing.</td></tr><tr><td>Matrix / Center / Spot</td><td>Whole frame / middle / tiny point.</td></tr></table></section>`; }
-function showTab(t){ $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t)); if(t==='camera'){ requestAnimationFrame(()=>{ sizeCanvas(); Object.values(D).forEach(d=>d.draw()); }); } if(t==='roll'){ renderRoll(); lessonFlag.roll=true; } window.scrollTo(0,0); }
-
+function openSheet(name){ $$('#stabs button').forEach(b=>b.classList.toggle('on',b.dataset.s===name)); $$('.spane').forEach(p=>p.classList.toggle('on',p.id==='s-'+name));
+  if(name==='roll'){ renderRoll(); lessonFlag.roll=true; } $('#sheet').classList.add('show'); $('#sheet').setAttribute('aria-hidden','false'); $('.sheet-b').scrollTop=0; }
+function closeSheet(){ $('#sheet').classList.remove('show'); $('#sheet').setAttribute('aria-hidden','true'); }
+function showTab(t){ if(t==='camera') closeSheet(); else openSheet(t==='home'?'learn':t); }
 // ---------- init ----------
 window.addEventListener('DOMContentLoaded',()=>{
   load(); try{ R=new Renderer($('#gl')); }catch(e){ $('#vf').innerHTML='<p style="padding:2em">Sorry, this browser does not support WebGL2, which Exposure Lab needs. Try a recent Safari, Chrome or Edge.</p>'; console.warn(e); return; }
   ST.recover=0; makeDials(); buildControls(); buildScene(); ST.focusS=targetDist(0);
-  $$('.nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+  $('#menuBtn').onclick=()=>{ ac(); openSheet(CUR?'lesson':'learn'); }; $('#sheetClose').onclick=closeSheet;
+  $('#stabs').onclick=e=>{ const b=e.target.closest('button'); if(b) openSheet(b.dataset.s); };
+  $('#hint').onclick=()=>{ if(CUR&&CUR.type==='lesson'&&$$('.steps li').every(li=>li.classList.contains('done'))&&CUR.i<LESSONS.length-1) return openLesson(CUR.i+1); openSheet('lesson'); };
   $('#modal').onclick=e=>{ if(e.target.id==='modal'||e.target.classList.contains('mx')) closeModal(); };
   $('#zoomBtn').onclick=()=>{ $('#vf').classList.toggle('zoom'); lessonFlag.zoom=true; };
   $('#clearRoll').onclick=()=>{ if(confirm('Delete all photos in the roll?')){ ROLL=[]; localStorage.removeItem('el_roll'); renderRoll(); $('#lastShot').style.display='none'; } };
-  $('#lastShot').onclick=()=>showTab('roll'); if(ROLL[0]){ $('#lastShot').src=ROLL[0].img; } else $('#lastShot').style.display='none';
-  $('#startBtn').onclick=()=>openLesson(0); $('#sandboxBtn').onclick=()=>{ CUR=null; renderCard(); showTab('camera'); };
-  renderLists(); renderQuiz(); renderCheat(); renderRoll(); afterChange('init'); $('#histBox').style.display=ST.hist?'':'none';
-  window.addEventListener('resize',sizeCanvas); new ResizeObserver(sizeCanvas).observe($('#vf'));
+  $('#lastShot').onclick=()=>openSheet('roll'); if(ROLL[0]){ $('#lastShot').src=ROLL[0].img; } else $('#lastShot').style.display='none';
+  updPlate(); renderLists(); renderQuiz(); renderCheat(); renderRoll(); afterChange('init');
+  window.addEventListener('resize',sizeCanvas); window.addEventListener('orientationchange',()=>setTimeout(sizeCanvas,200));
   sizeCanvas(); G.last=performance.now(); requestAnimationFrame(tick);
+  if(!localStorage.getItem('el_seen')){ localStorage.setItem('el_seen','1'); setTimeout(()=>toast('Swipe the wheel to change a setting. Tap ☰ for lessons.',4200),600); }
 });

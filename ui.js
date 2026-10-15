@@ -10,46 +10,47 @@ function noiseBurst(a,t,dur,vol,freq){ const n=a.createBuffer(1,Math.ceil(a.samp
 function shutterSound(sec){ if(!sfxOn) return; const a=ac(); if(!a) return; const t=a.currentTime; noiseBurst(a,t,0.05,0.9,2500); noiseBurst(a,t+0.01,0.03,0.6,700);
   const t2=t+Math.max(0.06,Math.min(sec,1.2)); noiseBurst(a,t2,0.05,0.8,2000); noiseBurst(a,t2+0.01,0.04,0.5,600); }
 
-// ---------- Dial ----------
-class Dial {
-  constructor(host,o){ this.o=o; this.labels=o.labels; this.value=o.value; this.host=host; this.disabled=false;
-    host.innerHTML=`<div class="dial-title">${o.title}</div><canvas class="dial-c" tabindex="0" role="slider" aria-label="${o.title}"></canvas><div class="dial-val"></div>`;
-    this.cv=$('canvas',host); this.vl=$('.dial-val',host); this.acc=0; this.spacing=o.spacing||20; this.anim=0;
-    const cv=this.cv; let drag=null;
-    cv.addEventListener('pointerdown',e=>{ ac(); cv.setPointerCapture(e.pointerId); const r=cv.getBoundingClientRect(); drag={cx:r.left+r.width/2,cy:r.top+r.height/2,a:null,x:e.clientX,y:e.clientY}; drag.a=this.ang(e,drag); e.preventDefault(); });
-    cv.addEventListener('pointermove',e=>{ if(!drag) return; const a=this.ang(e,drag); let da;
-      const dist=Math.hypot(e.clientX-drag.cx,e.clientY-drag.cy), r=cv.getBoundingClientRect().width/2;
-      if(dist<r*0.25){ da=(e.clientX-drag.x)*0.9; } else { da=a-drag.a; if(da>180) da-=360; if(da<-180) da+=360; }
-      drag.a=a; drag.x=e.clientX; drag.y=e.clientY; this.spin(da); e.preventDefault(); });
-    const end=e=>{ if(drag){ drag=null; this.acc=0; this.draw(); } }; cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
-    let wacc=0; cv.addEventListener('wheel',e=>{ e.preventDefault(); wacc+=(Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX); while(Math.abs(wacc)>=40){ this.step(wacc>0?1:-1); wacc-=Math.sign(wacc)*40; } },{passive:false});
-    cv.addEventListener('keydown',e=>{ if(['ArrowRight','ArrowUp'].includes(e.key)){this.step(1);e.preventDefault();} if(['ArrowLeft','ArrowDown'].includes(e.key)){this.step(-1);e.preventDefault();} });
-    new ResizeObserver(()=>this.draw()).observe(cv); this.draw(); }
-  ang(e,d){ return Math.atan2(e.clientY-d.cy,e.clientX-d.cx)*180/Math.PI; }
-  spin(da){ if(this.disabled){ this.blocked(); return; } this.acc+=da; const sp=this.spacing*(this.o.stepSize?this.o.stepSize():1);
-    while(this.acc>=sp){ this.acc-=sp; this.step(1,true); } while(this.acc<=-sp){ this.acc+=sp; this.step(-1,true); } this.draw(); }
-  step(dir,fromDrag){ if(this.disabled){ this.blocked(); return; } const k=this.o.stepSize?this.o.stepSize():1; let v=this.value+dir*k; if(this.o.snap) v=this.o.snap(v);
-    v=Math.max(0,Math.min(this.labels.length-1,v)); if(v!==this.value){ this.value=v; tickSound(); this.o.onChange(v); } else if(!fromDrag) {} this.draw(); }
-  blocked(){ if(this.o.blockedMsg) toast(this.o.blockedMsg()); }
-  set(v){ if(v===this.value) return; this.value=v; this.draw(); }
-  draw(){ const cv=this.cv, r=cv.getBoundingClientRect(); if(!r.width) return; const dpr=Math.min(2,window.devicePixelRatio||1); const W=Math.round(r.width*dpr);
-    if(cv.width!==W){ cv.width=W; cv.height=W; } const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); const s=r.width, R0=s/2;
-    c.clearRect(0,0,s,s); c.save(); c.translate(R0,R0);
-    const g=c.createRadialGradient(-R0*0.3,-R0*0.4,R0*0.1,0,0,R0); g.addColorStop(0,'#4a4d55'); g.addColorStop(1,'#16171b'); c.fillStyle=g; c.beginPath(); c.arc(0,0,R0-2,0,7); c.fill();
-    const rot=-(this.acc/ (this.spacing*(this.o.stepSize?this.o.stepSize():1)))*this.spacing; // live feedback
-    c.save(); c.rotate(rot*Math.PI/180);
-    for(let a=0;a<360;a+=6){ c.rotate(6*Math.PI/180); c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(-1,-R0+3,2,6); }
-    c.restore();
-    c.font=`600 ${Math.max(10,s*0.105)}px system-ui, sans-serif`; c.textAlign='center'; c.textBaseline='middle';
-    const step=this.o.stepSize?this.o.stepSize():1;
-    for(let k=-4;k<=4;k++){ const i=this.value+k*step; if(i<0||i>=this.labels.length) continue; const a=(k*this.spacing*1.6 - rot*0)*Math.PI/180 - Math.PI/2 + (this.acc/(this.spacing*step))*this.spacing*1.6*Math.PI/180*-1*-1*0;
-      const rad=R0*0.66; c.save(); c.rotate(a+Math.PI/2); c.translate(0,-rad); c.fillStyle= k===0? (this.disabled?'#9ab':'#fff') : 'rgba(255,255,255,'+(0.55-Math.abs(k)*0.1)+')'; c.fillText(this.labels[i],0,0); c.restore(); }
-    c.fillStyle=this.disabled?'#7a8a99':'#ff5a36'; c.beginPath(); c.moveTo(-6,-R0+1); c.lineTo(6,-R0+1); c.lineTo(0,-R0+10); c.fill();
-    c.beginPath(); c.arc(0,0,R0*0.3,0,7); c.fillStyle='#0d0e11'; c.fill(); c.strokeStyle='rgba(255,255,255,.08)'; c.stroke(); c.restore();
-    this.vl.textContent=(this.o.prefix||'')+this.labels[this.value]+(this.o.suffix||''); cv.setAttribute('aria-valuetext',this.vl.textContent);
-    this.host.classList.toggle('auto',this.disabled); }
+// ---------- Wheel (horizontal scroll dial) ----------
+class Wheel {
+  constructor(cv){ this.cv=cv; this.pos=0; this.def=null; this.sp=64; this.vel=0; this.anim=false;
+    let drag=null;
+    cv.addEventListener('pointerdown',e=>{ ac(); if(!this.def) return; cv.setPointerCapture(e.pointerId); drag={x:e.clientX,t:performance.now(),moved:0}; this.vel=0; this.anim=false; e.preventDefault(); });
+    cv.addEventListener('pointermove',e=>{ if(!drag) return; const dx=e.clientX-drag.x, now=performance.now(); drag.moved+=Math.abs(dx);
+      const dt=Math.max(1,now-drag.t); this.vel=0.7*this.vel+0.3*(-dx/this.sp)/dt; drag.x=e.clientX; drag.t=now; this.move(-dx/this.sp); e.preventDefault(); });
+    const end=e=>{ if(!drag) return; const tap=drag.moved<6; drag=null;
+      if(tap){ const r=cv.getBoundingClientRect(); const off=(e.clientX-r.left-r.width/2)/this.sp; if(Math.abs(off)>0.5) this.move(Math.round(off)*this.stepSize()); this.settle(); return; }
+      if(Math.abs(this.vel)>0.002){ this.fling(); } else this.settle(); };
+    cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+    let wacc=0; cv.addEventListener('wheel',e=>{ e.preventDefault(); wacc+=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY); while(Math.abs(wacc)>=30){ this.move(Math.sign(wacc)*this.stepSize()); wacc-=Math.sign(wacc)*30; } this.settle(); },{passive:false});
+    cv.addEventListener('keydown',e=>{ if(['ArrowRight','ArrowUp'].includes(e.key)){this.move(this.stepSize());this.settle();e.preventDefault();} if(['ArrowLeft','ArrowDown'].includes(e.key)){this.move(-this.stepSize());this.settle();e.preventDefault();} });
+    new ResizeObserver(()=>this.draw()).observe(cv); }
+  stepSize(){ return this.def&&this.def.full&&ST.full?3:1; }
+  bind(def){ this.def=def; this.pos=def.get(); this.anim=false; this.draw(); this.cv.setAttribute('aria-label',def.name+' wheel'); }
+  move(d){ const D=this.def; if(!D) return; if(D.disabled()){ toast(D.blocked()); return; }
+    const n=D.labels.length-1; this.pos=Math.max(0,Math.min(n,this.pos+d)); let idx=Math.round(this.pos); const k=this.stepSize(); if(k>1) idx=Math.round(idx/k)*k; idx=Math.max(0,Math.min(n,idx));
+    if(idx!==D.get()){ D.set(idx); tickSound(); }
+    this.draw(); }
+  fling(){ this.anim=true; let last=performance.now(); const go=now=>{ if(!this.anim) return; const dt=now-last; last=now; this.move(this.vel*dt); this.vel*=Math.pow(0.994,dt);
+      const n=this.def.labels.length-1; if(Math.abs(this.vel)<0.0015||this.pos<=0||this.pos>=n){ this.anim=false; this.settle(); return; } requestAnimationFrame(go); }; requestAnimationFrame(go); }
+  settle(){ const target=this.def.get(); const from=this.pos; const t0=performance.now(); this.anim=false;
+    const go=now=>{ const k=Math.min(1,(now-t0)/140); this.pos=from+(target-from)*(1-Math.pow(1-k,3)); this.draw(); if(k<1&&!this.anim) requestAnimationFrame(go); }; requestAnimationFrame(go); }
+  sync(){ if(!this.def||this.anim) return; const g=this.def.get(); if(Math.round(this.pos)!==g){ this.pos=g; this.draw(); } }
+  draw(){ const cv=this.cv, r=cv.getBoundingClientRect(); if(!r.width||!this.def) return; const dpr=Math.min(2,window.devicePixelRatio||1);
+    const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+    const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); const w=r.width, h=r.height, D=this.def, dis=D.disabled(); c.clearRect(0,0,w,h);
+    this.sp = Math.max(56, Math.min(84, w/5.5));
+    const cx=w/2, n=D.labels.length, k=this.stepSize();
+    for(let i=Math.max(0,Math.floor(this.pos-w/2/this.sp)-1); i<=Math.min(n-1,Math.ceil(this.pos+w/2/this.sp)+1); i++){
+      const x=cx+(i-this.pos)*this.sp, dist=Math.abs(x-cx)/(w/2); const al=Math.max(0,1-dist*0.85);
+      const major=i%3===0; c.fillStyle=`rgba(255,255,255,${(major?0.55:0.3)*al})`; c.fillRect(x-1,h-(major?22:14),2,major?16:9);
+      for(let m=1;m<3;m++){ const xm=x+m*this.sp/3; c.fillStyle=`rgba(255,255,255,${0.12*al})`; c.fillRect(xm-0.5,h-11,1,6); }
+      if(k>1&&i%k) continue;
+      const near=Math.abs(i-this.pos)<0.5; c.font=`${near?800:600} ${near?Math.min(22,h*0.26):Math.min(15,h*0.19)}px ui-monospace,Menlo,monospace`; c.textAlign='center'; c.textBaseline='middle';
+      c.fillStyle= near? (dis?'#8fb4d9':'#fff') : `rgba(220,225,235,${al*0.8})`; c.fillText((D.prefix||'')+D.labels[i],x,h*0.42); }
+    const g=c.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(12,13,16,1)'); g.addColorStop(0.18,'rgba(12,13,16,0)'); g.addColorStop(0.82,'rgba(12,13,16,0)'); g.addColorStop(1,'rgba(12,13,16,1)'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle=dis?'#7a8a99':'#ff5a36'; c.beginPath(); c.moveTo(cx-8,0); c.lineTo(cx+8,0); c.lineTo(cx,10); c.fill(); c.fillRect(cx-1.5,h-26,3,24);
+    cv.setAttribute('aria-valuetext',(D.prefix||'')+D.labels[D.get()]); }
 }
-
 // ---------- toast & callouts ----------
 let toastT=0; function toast(msg,ms=2600){ const t=$('#toast'); t.innerHTML=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),ms); }
 let prevSnap=null, changeT=0;
@@ -65,26 +66,35 @@ function whatChanged(kind){ if(!G.meterMap) return; clearTimeout(changeT); if(!p
     if(a.focal!==b.focal){ L.push(`Focal length ${a.focal} → ${b.focal}mm: field of view ${fov(a.focal)}° → ${fov(b.focal)}°. Background blur ${a.m.bgBlur.toFixed(0)} → ${b.m.bgBlur.toFixed(0)} px.`); }
     if(a.ec!==b.ec){ L.push(`Exposure compensation ${st(a.ec/3)} → ${st(b.ec/3)} EV: the camera changes ${ST.mode==='Av'?'shutter speed':ST.mode==='Tv'?'aperture':'its settings'} to make the photo ${b.ec>a.ec?'brighter':'darker'}.`); }
     if(ST.mode!=='M' && (a.ti!==b.ti||a.ai!==b.ai||a.qi!==b.qi) && kind!=='auto') L.push(`<i>In ${ST.mode} mode the camera re-balanced the other settings to keep the same exposure.</i>`);
-    if(!L.length) return; const html=L.join('<br>'); $('#changed').innerHTML='<b>What changed</b><br>'+html; $('#changed').classList.add('show'); clearTimeout(whatChanged.h); whatChanged.h=setTimeout(()=>$('#changed').classList.remove('show'),6000);
-    const lc=$('#lessonChanged'); if(lc) lc.innerHTML=html; },350); }
+    if(!L.length) return; const html=L.join('<br>'); const S=[];
+    if(a.ti!==b.ti) S.push(`${st((b.ti-a.ti)/-3)} EV · motion blur ${a.m.subMot.toFixed(0)}→${b.m.subMot.toFixed(0)}px`);
+    if(a.ai!==b.ai) S.push(`${st((a.ai-b.ai)/3)} EV · background blur ${a.m.bgBlur.toFixed(0)}→${b.m.bgBlur.toFixed(0)}px`);
+    if(a.qi!==b.qi) S.push(`${st((b.qi-a.qi)/3)} EV · noise ${a.m.noise.toFixed(0)}→${b.m.noise.toFixed(0)}%`);
+    if(a.nd!==b.nd) S.push(`ND ${st(a.nd-b.nd)} EV`); if(a.focal!==b.focal) S.push(`${b.focal}mm · ${fov(b.focal)}° view`); if(a.ec!==b.ec) S.push(`EV comp ${st(b.ec/3)}`);
+    if(ST.mode!=='M'&&kind!=='auto'&&(a.ti!==b.ti||a.ai!==b.ai)) S.push(`${ST.mode}: camera re-balanced`);
+    if(S.length){ $('#changed').innerHTML=S.slice(0,2).join(' · '); $('#changed').classList.add('show'); clearTimeout(whatChanged.h); whatChanged.h=setTimeout(()=>$('#changed').classList.remove('show'),2200); }
+    const lc=$('#lessonChanged'); if(lc) lc.innerHTML=html; },250); }
 function fov(f){ return Math.round(2*Math.atan(36/(2*f))*180/Math.PI); }
 
-// ---------- dials ----------
-let D={};
-function dialBlocked(name){ return ()=>`${name} is set by the camera in <b>${ST.mode}</b> mode. Switch the mode dial to ${name==='Shutter'?'Tv/S or M':name==='Aperture'?'Av/A or M':'M, Av or Tv'} to control it.`; }
+// ---------- setting chips + wheel ----------
+let D={}, WHEEL=null, SEL='t';
+const MODES=['Auto','P','Tv','Av','M'];
+function blockedMsg(name){ return `${name} is set by the camera in <b>${ST.mode}</b> mode. Pick ${name==='Shutter'?'Tv or M':name==='Aperture'?'Av or M':'M, Av, Tv or P'} on the Mode chip to control it.`; }
+const DEFS={
+ t:{name:'Shutter',labels:SHUTTER_LABELS,full:true,get:()=>ST.ti,set:v=>{ST.ti=v;afterChange('t');},disabled:()=>['Av','P','Auto'].includes(ST.mode),blocked:()=>blockedMsg('Shutter'),hint:'Fast = freeze motion · slow = blur'},
+ a:{name:'Aperture',labels:APERTURE_LABELS,prefix:'f/',full:true,get:()=>ST.ai,set:v=>{ST.ai=v;afterChange('a');},disabled:()=>['Tv','P','Auto'].includes(ST.mode),blocked:()=>blockedMsg('Aperture'),hint:'Small f-number = blurry background'},
+ q:{name:'ISO',labels:ISO_LABELS,full:true,get:()=>ST.qi,set:v=>{ST.qi=v;afterChange('q');},disabled:()=>ST.mode==='Auto',blocked:()=>blockedMsg('ISO'),hint:'Higher = brighter but noisier'},
+ ec:{name:'EV',labels:EC_LABELS,get:()=>ST.ec+9,set:v=>{ST.ec=v-9;afterChange('ec');},disabled:()=>ST.mode==='M',blocked:()=>'Exposure compensation works in P, Tv, Av and Auto. In M, watch the meter instead.',hint:'Tell auto modes: brighter / darker'},
+ mode:{name:'Mode',labels:['Auto','P','Tv/S','Av/A','M'],get:()=>MODES.indexOf(ST.mode),set:v=>{ST.mode=MODES[v]; if(ST.mode==='Auto') ST.flash=false; afterChange('mode');},disabled:()=>false,hint:'M: you set all · Av: you set aperture · Tv: you set shutter'}
+};
+function chipVal(k){ const d=DEFS[k]; return (d.prefix||'')+d.labels[d.get()]; }
 function makeDials(){
-  const stepSize=()=>ST.full?3:1, snapF=v=>ST.full?Math.round(v/3)*3:v;
-  D.mode=new Dial($('#dMode'),{title:'Mode',labels:['Auto','P','Tv/S','Av/A','M'],value:4,spacing:24,onChange:v=>{ ST.mode=['Auto','P','Tv','Av','M'][v]; if(ST.mode==='Auto'){ST.flash=false;} afterChange('mode'); }});
-  D.t=new Dial($('#dT'),{title:'Shutter',labels:SHUTTER_LABELS,value:ST.ti,spacing:26,stepSize,snap:snapF,blockedMsg:dialBlocked('Shutter'),onChange:v=>{ST.ti=v;afterChange('t');}});
-  D.a=new Dial($('#dA'),{title:'Aperture',labels:APERTURE_LABELS,value:ST.ai,prefix:'f/',stepSize,snap:snapF,blockedMsg:dialBlocked('Aperture'),onChange:v=>{ST.ai=v;afterChange('a');}});
-  D.q=new Dial($('#dQ'),{title:'ISO',labels:ISO_LABELS,value:ST.qi,spacing:24,stepSize,snap:snapF,blockedMsg:dialBlocked('ISO'),onChange:v=>{ST.qi=v;afterChange('q');}});
-  D.ec=new Dial($('#dEC'),{title:'Exp. comp',labels:EC_LABELS,value:ST.ec+9,suffix:' EV',blockedMsg:()=>'Exposure compensation works in P, Tv, Av and Auto. In M you set exposure yourself (watch the meter).',onChange:v=>{ST.ec=v-9;afterChange('ec');}});
-}
-function syncDials(){ if(!D.t) return; D.t.set(ST.ti); D.a.set(ST.ai); D.q.set(ST.qi); D.ec.set(ST.ec+9); D.mode.set(['Auto','P','Tv','Av','M'].indexOf(ST.mode));
-  const m=ST.mode; const dis={t:m==='Av'||m==='P'||m==='Auto', a:m==='Tv'||m==='P'||m==='Auto', q:m==='Auto', ec:m==='M'};
-  for(const k in dis){ if(D[k].disabled!==dis[k]){ D[k].disabled=dis[k]; D[k].draw(); } } }
+  $('#chips').innerHTML=Object.keys(DEFS).map(k=>`<button class="chip" data-k="${k}"><small>${DEFS[k].name}</small><b></b></button>`).join('')+`<button class="chip" data-k="more"><small>More</small><b>⚙︎</b></button>`;
+  $('#chips').onclick=e=>{ const b=e.target.closest('.chip'); if(!b) return; ac(); tickSound(); if(b.dataset.k==='more'){ openSheet('settings'); return; } selectSetting(b.dataset.k); };
+  WHEEL=new Wheel($('#wheel')); selectSetting('t'); }
+function selectSetting(k){ SEL=k; WHEEL.bind(DEFS[k]); $$('#chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.k===k)); $('#wheelTitle').textContent=DEFS[k].name+' · '+DEFS[k].hint; }
+function syncDials(){ if(!WHEEL) return; $$('#chips .chip').forEach(c=>{ const k=c.dataset.k; if(!DEFS[k]) return; $('b',c).textContent=chipVal(k); c.classList.toggle('auto',DEFS[k].disabled()&&k!=='mode'); }); WHEEL.sync(); }
 function afterChange(kind){ if(ST.mode!=='M') autoExpose(); syncDials(); syncControls(); whatChanged(kind); lessonCheck(); save(); }
-
 // ---------- control panel ----------
 function seg(host,key,opts,cb){ const el=$(host); el.innerHTML=opts.map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('');
   el.onclick=e=>{ const b=e.target.closest('button'); if(!b) return; let v=b.dataset.v; if(v==='true')v=true; else if(v==='false')v=false; else if(!isNaN(+v)&&v!=='') v=+v; ST[key]=v; tickSound(); if(cb) cb(v); afterChange(key); }; }
@@ -93,7 +103,7 @@ function syncControls(){ $$('.seg').forEach(el=>{ const key=el.dataset.key; $$('
   $('#mf').value=Math.round(Math.log(ST.mf/0.3)/Math.log(1000/0.3)*1000); $('#mfV').textContent=fmtDist(ST.mf); $('#mfRow').style.display=ST.af==='MF'?'':'none';
   $('#kel').value=ST.K; $('#kelV').textContent=ST.K+'K'; $('#kelRow').style.display=ST.wb==='Kelvin'?'':'none';
   $('#fec').value=ST.fec*3; $('#fecV').textContent=fmtStops(ST.fec,true)+' EV'; $('#flashRow').style.display=ST.flash?'':'none';
-  $('#rec').value=ST.recover*3; $('#recV').textContent=fmtStops(ST.recover,true)+' EV';
+  $('#histBox').style.display=ST.hist?'':'none'; $('#rec').value=ST.recover*3; $('#recV').textContent=fmtStops(ST.recover,true)+' EV';
   $('#keep').checked=ST.keepSize; updDof(); $$('#scenes button').forEach(b=>b.classList.toggle('on',b.dataset.s===ST.scene)); }
 function updDof(){ const fr=G.frame; if(fr){ const c=0.03, H=fr.f*fr.f/(fr.N*c)/1000+fr.f/1000, s=fr.s; const near=s*(H-fr.f/1000)/(H+s-2*fr.f/1000), far=s<H? s*(H-fr.f/1000)/(H-s):1e9;
     $('#dof').innerHTML=`Depth of field at f/${APERTURE_LABELS[ST.ai]}, ${ST.focal}mm, focused at ${fmtDist(s)}: <b>${fmtDist(near)} – ${far>=1e8?'∞':fmtDist(far)}</b> · hyperfocal ${fmtDist(H)}`; } }
@@ -110,7 +120,7 @@ function buildControls(){
   seg('#segDrive','drive',[['single','Single'],['burst','Burst 10 fps']]); seg('#segRaw','raw',[[false,'JPEG'],[true,'RAW']]);
   seg('#segStops','full',[[false,'⅓ stops'],[true,'Full stops']],v=>{ if(v){ ST.ti=Math.round(ST.ti/3)*3; ST.ai=Math.round(ST.ai/3)*3; ST.qi=Math.round(ST.qi/3)*3; } });
   seg('#segGrid','grid',[[true,'Grid on'],[false,'Off']]); seg('#segWarn','warn',[['off','Off'],['zebra','Zebras'],['blink','Blinkies']]);
-  seg('#segPeak','peaking',[[false,'Peaking off'],[true,'Peaking on']]); seg('#segHist','hist',[[true,'Histogram'],[false,'Hide']],v=>$('#histBox').style.display=v?'':'none');
+  seg('#segPeak','peaking',[[false,'Peaking off'],[true,'Peaking on']]); seg('#segHist','hist',[[true,'Show'],[false,'Hide']]);
   $('#focal').oninput=e=>{ const f=Math.round(14*Math.pow(200/14,e.target.value/1000)); if(f!==ST.focal){ ST.focal=f; tickSound(); if(ST.af!=='MF') ST.focusS=targetDist(G.time); afterChange('focal'); } };
   $$('#focalChips button').forEach(b=>b.onclick=()=>{ ST.focal=+b.dataset.f; if(ST.af!=='MF') ST.focusS=targetDist(G.time); tickSound(); afterChange('focal'); });
   $('#keep').onchange=e=>{ ST.keepSize=e.target.checked; afterChange('focal'); };
@@ -120,10 +130,16 @@ function buildControls(){
   $('#rec').oninput=e=>{ ST.recover=e.target.value/3; afterChange('rec'); };
   $$('.ptabs button').forEach(b=>b.onclick=()=>{ $$('.ptabs button').forEach(x=>x.classList.toggle('on',x===b)); $$('.pane').forEach(p=>p.classList.toggle('on',p.id===b.dataset.p)); });
   // viewfinder tap = focus point
-  $('#ov').addEventListener('pointerdown',e=>{ ac(); const r=e.target.getBoundingClientRect(); const u=(e.clientX-r.left)/r.width, v=(e.clientY-r.top)/r.height; ST.focusPt=[u,v];
+  $('#ov').addEventListener('pointerdown',e=>{ ac(); const r=e.target.getBoundingClientRect(); const dw=Math.max(r.width,r.height*TEXW/TEXH), dh=dw*TEXH/TEXW; const u=(e.clientX-r.left-(r.width-dw)/2)/dw, v=(e.clientY-r.top-(r.height-dh)/2)/dh; ST.focusPt=[u,v];
     const p=pickAt(u,v,G.time); ST.afLayer=p.id; if(ST.af!=='MF'){ ST.focusS=p.d; toast(`Focus: ${p.id==='ground'?'ground':p.id} at ${fmtDist(p.d)}`,1400); } tickSound(); afterChange('focus'); });
-  $('#shutter').onclick=takePhoto; document.addEventListener('keydown',e=>{ if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&!document.activeElement.classList.contains('dial-c')){ e.preventDefault(); takePhoto(); } });
-  $('#sfx').onclick=()=>{ sfxOn=!sfxOn; $('#sfx').textContent=sfxOn?'🔊':'🔇'; };
+  const sh=$('#shutter'); let halfT=0, pressed=false;
+  sh.addEventListener('pointerdown',e=>{ e.preventDefault(); ac(); pressed=true; sh.classList.add('half'); halfPress(); });
+  sh.addEventListener('pointerup',e=>{ if(!pressed) return; pressed=false; sh.classList.remove('half'); sh.classList.add('full'); setTimeout(()=>sh.classList.remove('full'),150); takePhoto(); });
+  sh.addEventListener('pointerleave',()=>{ if(pressed){ pressed=false; sh.classList.remove('half'); G.afLock=0; } });
+  sh.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); halfPress(); takePhoto(); } });
+  seg('#segInside','inside',[[true,'Show'],[false,'Hide']]); seg('#segBody','body',[['DSLR','DSLR (mirror)'],['Mirrorless','Mirrorless']]); document.addEventListener('keydown',e=>{ if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&!document.activeElement.classList.contains('dial-c')){ e.preventDefault(); takePhoto(); } });
+  $('#sfx').onclick=()=>{ sfxOn=!sfxOn; $('#sfx').textContent=sfxOn?'On':'Off'; $('#sfx').classList.toggle('on',sfxOn); };
+
 }
 function setScene(k,keepLens){ ST.scene=k; const sc=SCENES[k]; if(!keepLens){ ST.focal=sc.focal; ST.keepSize=false; } ST.afLayer=sc.focus;
   const sub=sc.layers.find(l=>l.id===sc.focus); ST.focusPt=[0.5,0.55]; buildScene(); ST.focusS=targetDist(G.time); ST.mf=ST.focusS;
@@ -134,12 +150,14 @@ let ROLL=[]; try{ ROLL=JSON.parse(localStorage.getItem('el_roll')||'[]'); }catch
 function capture(time){ const fr=computeFrame(time); R.draw(fr); const c=document.createElement('canvas'); c.width=640; c.height=400; c.getContext('2d').drawImage($('#gl'),0,0,640,400);
   return { img:c.toDataURL('image/jpeg',0.72), fr, m:metrics(fr) }; }
 function shotInfo(fr){ return {mode:ST.mode,t:SHUTTER_LABELS[ST.ti],N:APERTURE_LABELS[ST.ai],iso:ISO_LABELS[ST.qi],f:ST.focal,ev:ST.mode==='M'?Math.round(fr.meter*3)/3:ST.ec/3,wb:ST.wb==='Kelvin'?ST.K+'K':ST.wb,nd:ST.nd,flash:ST.flash,raw:ST.raw,scene:SC().name,af:ST.af,meter:ST.meter,focus:fmtDist(fr.s),time:new Date().toLocaleString()}; }
-function takePhoto(){ ac(); const t=tOf(ST.ti); shutterSound(t); const vf=$('#vf'); vf.classList.add('flashing'); setTimeout(()=>vf.classList.remove('flashing'),Math.min(900,120+t*300));
+function afBeep(){ if(!sfxOn) return; const a=ac(); if(!a) return; const t=a.currentTime; for(const d of [0,0.09]){ const o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.value=3100; g.gain.setValueAtTime(0.06,t+d); g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.06); o.connect(g).connect(a.destination); o.start(t+d); o.stop(t+d+0.07); } }
+function halfPress(){ if(ST.af!=='MF'){ ST.focusS=targetDist(G.time); } G.afLock=performance.now(); afBeep(); }
+function takePhoto(){ ac(); if(ST.inside) insideAnim(); const t=tOf(ST.ti); shutterSound(t); const vf=$('#vf'); vf.classList.add('flashing'); setTimeout(()=>vf.classList.remove('flashing'),Math.min(900,120+t*300));
   const shots=[]; const n=ST.drive==='burst'?8:1; for(let i=0;i<n;i++){ const s=capture(G.time+i*0.1); s.info=shotInfo(s.fr); shots.push(s); }
   if(n>1){ let k=1; const iv=setInterval(()=>{ if(k++>=n) return clearInterval(iv); shutterSound(Math.min(t,0.05)); },100); }
   const burstId=n>1?Date.now():0; for(const s of shots) ROLL.unshift({img:s.img,info:s.info,burst:burstId,m:{subMot:+s.m.subMot.toFixed(1),subBlur:+s.m.subBlur.toFixed(1),bgBlur:+s.m.bgBlur.toFixed(0),shake:+s.m.shake.toFixed(1)}});
   ROLL=ROLL.slice(0,48); try{ localStorage.setItem('el_roll',JSON.stringify(ROLL)); }catch(e){ ROLL=ROLL.slice(0,16); try{localStorage.setItem('el_roll',JSON.stringify(ROLL));}catch(e2){} }
-  $('#rollCount').textContent=ROLL.length; $('#lastShot').src=shots[0].img; $('#lastShot').style.display='';
+  $('#rollCount').textContent=ROLL.length; updPlate(); $('#lastShot').src=shots[0].img; $('#lastShot').style.display='';
   challengeCheck(shots); renderRoll(); }
 function exifLine(i){ return `${i.mode} · ${i.t}${/"/.test(i.t)?'':'s'} · f/${i.N} · ISO ${i.iso} · ${i.f}mm · ${i.ev>=0?'+':''}${fmtStops(i.ev)} EV · WB ${i.wb}${i.nd?' · ND '+i.nd+' stops':''}${i.flash?' · Flash':''} · ${i.raw?'RAW':'JPEG'}`; }
 function renderRoll(){ const g=$('#rollGrid'); if(!g) return; $('#rollCount').textContent=ROLL.length;
@@ -152,3 +170,29 @@ function closeModal(){ $('#modal').classList.remove('show'); }
 // ---------- persistence ----------
 function save(){ try{ localStorage.setItem('el_state',JSON.stringify(ST)); }catch(e){} }
 function load(){ try{ const s=JSON.parse(localStorage.getItem('el_state')||'null'); if(s&&SCENES[s.scene]) Object.assign(ST,s); }catch(e){} }
+
+// ---------- top plate ----------
+function updPlate(){ const n=ROLL.length; $('#shotsLeft').textContent='['+Math.max(0,999-n)+']'; $('#batLvl').style.width=Math.max(15,90-n*1.5)+'%'; }
+// ---------- "how it works inside" animation ----------
+function insideAnim(){ const cv=$('#inside'); cv.classList.add('show'); const c=cv.getContext('2d'), W=cv.width, H=cv.height; const t=tOf(ST.ti), N=nOf(ST.ai), dslr=ST.body==='DSLR';
+  const expDur=Math.max(0.25,Math.min(1.6,0.25+Math.log2(1+t*8)*0.35)); const ph=dslr?[0.18,0.12,expDur,0.12,0.18]:[0.12,0.12,expDur,0.12,0.12]; const total=ph.reduce((a,b)=>a+b)+0.5; const t0=performance.now();
+  const iris=(x,y,r,open)=>{ c.fillStyle='#222'; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); const ro=r*open; c.fillStyle='#9fd3ff'; c.beginPath(); for(let i=0;i<7;i++){ const a=i/7*Math.PI*2-Math.PI/2; const px=x+Math.cos(a)*ro, py=y+Math.sin(a)*ro; i?c.lineTo(px,py):c.moveTo(px,py);} c.fill(); c.strokeStyle='#555'; c.beginPath(); c.arc(x,y,r,0,7); c.stroke(); };
+  const go=now=>{ const s=(now-t0)/1000; let k=s, stage=0; for(;stage<ph.length&&k>ph[stage];stage++) k-=ph[stage]; const p=stage<ph.length?k/ph[stage]:1;
+    c.clearRect(0,0,W,H); c.fillStyle='#0b0c0e'; c.fillRect(0,0,W,H); c.font='600 11px system-ui'; c.fillStyle='#ccc';
+    const open=Math.max(0.12,1.4/N); const stopped= stage===0?1-p*(1-open): stage>=4?open+(1-open)*p: stage>=1&&stage<4?open:1;
+    iris(40,70,28,stage>=5?1:stopped); c.fillText('aperture f/'+APERTURE_LABELS[ST.ai],6,128);
+    // light path
+    const sx=200, sy=30, sh=80; c.fillStyle='#2a2d33'; c.fillRect(sx,sy,14,sh); c.fillStyle='#ccc'; c.fillText('sensor',176,128);
+    let mirrorUp=false;
+    if(dslr){ const ang= stage===0? p : stage>=1&&stage<=3?1: stage===4?1-p:0; mirrorUp=ang>0.95; const mx=120,my=70; const a=-Math.PI/4+(Math.PI/4+0.05)*ang*1; 
+      c.strokeStyle='#e6e6e6'; c.lineWidth=4; c.beginPath(); c.moveTo(mx-Math.cos(a)*30,my+Math.sin(a)*30); c.lineTo(mx+Math.cos(a)*30,my-Math.sin(a)*30); c.stroke(); c.lineWidth=1;
+      c.fillStyle='#888'; c.fillText(ang>0.5?'mirror up':'mirror → viewfinder',88,18); }
+    else { c.fillStyle='#888'; c.fillText('no mirror: sensor feeds EVF',78,18); }
+    // shutter curtains
+    const front= stage<=1? (stage===1?1-p:1) : 0; const rear= stage===3? p : stage>3?1:0;
+    c.fillStyle='#555'; c.fillRect(sx-12,sy,8,sh*front); c.fillStyle='#777'; c.fillRect(sx-12,sy+sh*(1-rear),8,sh*rear);
+    const exposing= stage===2 || (stage===1&&p>0.5) || (stage===3&&p<0.5);
+    if(exposing&&(!dslr||mirrorUp||stage===2)){ c.fillStyle='rgba(255,230,140,.35)'; c.beginPath(); c.moveTo(68,60); c.lineTo(sx,sy); c.lineTo(sx,sy+sh); c.lineTo(68,80); c.fill(); c.fillStyle='#ffd27a'; c.fillRect(sx,sy,14,sh); }
+    c.fillStyle='#fff'; c.font='700 12px ui-monospace,monospace'; c.fillText(['opening…','front curtain','exposing '+SHUTTER_LABELS[ST.ti],'rear curtain','resetting',''][Math.min(stage,5)],100,145);
+    if(s<total) requestAnimationFrame(go); else cv.classList.remove('show'); };
+  requestAnimationFrame(go); }

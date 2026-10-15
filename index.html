@@ -2,72 +2,81 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Exposure Lab: learn your camera by feel</title>
-<meta name="description" content="Interactive camera simulator: turn shutter, aperture and ISO dials and watch the photo change.">
-<meta name="theme-color" content="#121316"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Exposure Lab">
+<meta name="description" content="Interactive camera simulator: turn shutter, aperture and ISO and watch the photo change.">
+<meta name="theme-color" content="#000"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="Exposure Lab">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23222'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23ff6a3d' stroke-width='8'/><circle cx='50' cy='50' r='12' fill='%23ff6a3d'/></svg>">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head><body>
-<header class="top"><div class="brand"><span class="logo"></span>Exposure <b>Lab</b></div>
- <nav class="nav"><button data-t="home" class="on">Home</button><button data-t="learn">Learn</button><button data-t="camera">Camera</button><button data-t="challenges">Challenges</button><button data-t="roll">Roll <span id="rollCount" class="badge">0</span></button><button data-t="cheat">Cheat sheet</button></nav>
- <button id="sfx" class="icon" title="Sound effects on/off" aria-label="Sound effects">🔊</button></header>
-
-<section id="v-home" class="view on"><div class="hero">
- <h1>Feel what your camera does.</h1>
- <p>Turn real dials for <b>shutter speed</b>, <b>aperture</b> and <b>ISO</b> and watch a live photo freeze or blur, melt the background, or get grainy, using real exposure math.</p>
- <div class="row"><button id="startBtn" class="btn pri big">Start lesson 1</button><button id="sandboxBtn" class="btn big">Free play</button></div>
- <p class="muted" id="progress"></p>
- <div class="feat"><div><b>17 lessons</b><span>Exposure triangle, modes, metering, focus, WB, flash, ND, RAW…</span></div><div><b>9 challenges</b><span>Freeze the cyclist, silky waterfall, fill flash…</span></div><div><b>5 live scenes</b><span>Street, waterfall, night city, portrait, sports</span></div><div><b>Photo roll</b><span>Every shot saved with its settings</span></div></div>
-</div></section>
-
-<section id="v-learn" class="view"><div class="listwrap"><h2>Lessons</h2><p class="muted">Each lesson sets up the camera, explains in plain language and gives you steps to try. Steps tick off automatically.</p><div id="lessonList" class="list"></div></div></section>
-<section id="v-challenges" class="view"><div class="listwrap"><h2>Challenges</h2><p class="muted">Set up the shot, press the shutter, get graded.</p><div id="challengeList" class="list"></div><h2>Quick quiz</h2><div id="quiz"></div></div></section>
-<section id="v-roll" class="view"><div class="listwrap"><div class="row sb"><h2>Your roll</h2><button id="clearRoll" class="btn sm">Clear roll</button></div><div id="rollGrid" class="roll"></div></div></section>
-<section id="v-cheat" class="view"><div class="listwrap cheat"><h2>Cheat sheet</h2><div id="cheatBody"></div></div></section>
-
-<section id="v-camera" class="view"><div class="cam">
- <div class="vfwrap">
-  <div id="vf" class="vf"><canvas id="gl"></canvas><canvas id="ov" aria-label="Viewfinder. Tap to set focus point."></canvas>
-   <div id="histBox" class="histbox"><canvas id="hist" width="200" height="80"></canvas><div id="histNote"></div></div>
-   <button id="zoomBtn" class="icon vfbtn" title="Zoom 2× to inspect detail" aria-label="Zoom view">🔍</button>
-   <div id="changed" class="changed"></div><div id="toast" class="toast"></div></div>
-  <div class="info"><span id="iMode" class="mode">M</span><span id="iT"></span><span id="iN"></span><span id="iISO"></span>
-   <div id="meterScale" class="meter"><div class="ticks"><i>−3</i><i>−2</i><i>−1</i><i>0</i><i>+1</i><i>+2</i><i>+3</i></div><div id="meterNeedle" class="needle"></div></div><span id="meterVal" class="mv"></span>
-   <span id="iF"></span><span id="iWB"></span><span id="iExtra"></span></div>
-  <div id="phys" class="phys"></div>
+<div class="app">
+ <section class="vfarea" id="vfarea">
+  <div class="topplate" id="topplate"><span id="iMode" class="mode">M</span><span id="iT" class="big"></span><span id="iN" class="big"></span><span id="iISO"></span>
+   <div id="meterScale" class="meter" aria-label="Exposure level indicator"><div class="mlab"><i>−3</i><i>2</i><i>1</i><i>0</i><i>1</i><i>2</i><i>+3</i></div><div class="mticks"></div><div id="meterNeedle" class="needle"></div></div>
+   <span id="meterVal" class="mv"></span><span class="bat" aria-label="Battery"><i id="batLvl"></i></span><span id="shotsLeft" class="shots">[999]</span></div>
+  <div id="vf" class="vf"><canvas id="gl"></canvas><canvas id="ov" aria-label="Viewfinder. Tap to set the focus point."></canvas>
+   <div class="evfinfo"><span id="iF"></span><span id="iWB"></span><span id="iExtra"></span></div>
+   <canvas id="inside" class="inside" width="240" height="150" aria-label="Inside the camera"></canvas>
+   <button id="menuBtn" class="ovbtn menu" aria-label="Menu: lessons, challenges, roll">☰</button>
+   <div id="histBox" class="histbox"><canvas id="hist" width="160" height="64"></canvas><div id="histNote"></div></div>
+   <div id="hint" class="hint" style="display:none"></div>
+   <button id="zoomBtn" class="ovbtn zoomb" aria-label="Zoom 2× to inspect detail">🔍</button>
+   <div id="changed" class="changed"></div><div id="toast" class="toast"></div>
+  </div>
   <div id="scenes" class="scenes"></div>
+ </section>
+ <section class="controls" id="controls">
+  <div id="chips" class="chips"></div>
+  <div class="wheelrow">
+   <div class="wheelbox"><div id="wheelTitle" class="wtitle"></div><canvas id="wheel" class="wheel" tabindex="0" role="slider" aria-label="Setting wheel"></canvas></div>
+   <div class="shutterwrap"><button id="shutter" class="shutter" aria-label="Shutter: hold to focus, release to shoot (Space)"></button><small class="shint">hold = focus</small><img id="lastShot" class="last" alt="Last photo"></div>
+  </div>
+ </section>
+</div>
+
+<div id="sheet" class="sheet" aria-hidden="true">
+ <div class="sheet-h"><div class="stabs" id="stabs">
+   <button data-s="lesson" id="stLesson" style="display:none">Current</button><button data-s="settings">Settings</button><button data-s="learn">Lessons</button><button data-s="challenges">Challenges</button><button data-s="roll">Roll <span id="rollCount" class="badge">0</span></button><button data-s="quiz">Quiz</button><button data-s="cheat">Cheat sheet</button></div>
+  <button class="x" id="sheetClose" aria-label="Close">✕</button></div>
+ <div class="sheet-b">
+  <div class="spane" id="s-lesson"><div id="card" class="card"></div></div>
+  <div class="spane" id="s-settings">
+   <div class="ptabs"><button data-p="pLens" class="on">Lens &amp; focus</button><button data-p="pLight">Light</button><button data-p="pBody">Body</button><button data-p="pDisp">Display</button></div>
+   <div id="pLens" class="pane on">
+    <label>Focal length <span id="focalV"></span></label><input id="focal" type="range" min="0" max="1000">
+    <div id="focalChips" class="fchips"><button data-f="14">14</button><button data-f="24">24</button><button data-f="35">35</button><button data-f="50">50</button><button data-f="85">85</button><button data-f="135">135</button><button data-f="200">200</button></div>
+    <label class="chk"><input id="keep" type="checkbox"> Keep subject same size (walk back as you zoom: shows perspective)</label>
+    <label>Focus mode <small>(tap the photo to pick a focus point)</small></label><div id="segAF" class="seg" data-key="af"></div>
+    <div id="mfRow"><label>Focus distance <span id="mfV"></span></label><input id="mf" type="range" min="0" max="1000"><div id="segPeak" class="seg" data-key="peaking"></div></div>
+    <p id="dof" class="muted small"></p></div>
+   <div id="pLight" class="pane">
+    <label>Metering</label><div id="segMeter" class="seg" data-key="meter"></div>
+    <label>White balance</label><div id="segWB" class="seg" data-key="wb"></div><div id="kelRow"><label>Kelvin <span id="kelV"></span></label><input id="kel" type="range" min="2500" max="10000" step="100"></div>
+    <label>Flash <small>(guide number 40, sync 1/250)</small></label><div id="segFlash" class="seg" data-key="flash"></div>
+    <div id="flashRow"><label>Flash compensation <span id="fecV"></span></label><input id="fec" type="range" min="-9" max="6"><div id="segHSS" class="seg" data-key="hss"></div></div>
+    <label>ND filter</label><div id="segND" class="seg" data-key="nd"></div></div>
+   <div id="pBody" class="pane">
+    <label>Stabilization</label><div id="segIS" class="seg" data-key="is"></div>
+    <label>Support</label><div id="segTri" class="seg" data-key="tripod"></div>
+    <label>Drive mode</label><div id="segDrive" class="seg" data-key="drive"></div>
+    <label>Camera type</label><div id="segBody" class="seg" data-key="body"></div>
+    <label>File format</label><div id="segRaw" class="seg" data-key="raw"></div>
+    <label>Edit exposure later (RAW vs JPEG recovery) <span id="recV"></span></label><input id="rec" type="range" min="-9" max="9">
+    <label>Wheel steps</label><div id="segStops" class="seg" data-key="full"></div></div>
+   <div id="pDisp" class="pane">
+    <label>Rule-of-thirds grid</label><div id="segGrid" class="seg" data-key="grid"></div>
+    <label>Highlight warning</label><div id="segWarn" class="seg" data-key="warn"></div>
+    <label>Histogram</label><div id="segHist" class="seg" data-key="hist"></div>
+    <label>“How it works inside” view when shooting</label><div id="segInside" class="seg" data-key="inside"></div>
+    <label>Sound</label><div class="seg"><button id="sfx" class="on">On</button></div>
+    <div id="phys" class="phys"></div>
+    <p class="muted small">Swipe the wheel, scroll over it, or use arrow keys. Space takes a photo.</p></div>
+  </div>
+  <div class="spane" id="s-learn"><p class="muted">Each lesson sets up the camera. Steps tick off by themselves while the photo stays in view.</p><p class="muted" id="progress"></p><div id="lessonList" class="list"></div></div>
+  <div class="spane" id="s-challenges"><p class="muted">Set up the shot, press the shutter, get graded.</p><div id="challengeList" class="list"></div></div>
+  <div class="spane" id="s-roll"><div class="row sb"><b>Your roll</b><button id="clearRoll" class="btn sm">Clear roll</button></div><div id="rollGrid" class="roll"></div></div>
+  <div class="spane" id="s-quiz"><div id="quiz"></div></div>
+  <div class="spane cheat" id="s-cheat"><div id="cheatBody"></div></div>
  </div>
- <aside class="panel">
-  <div id="card" class="card" style="display:none"></div>
-  <div class="dials"><div id="dMode" class="dial"></div><div id="dT" class="dial"></div><div id="dA" class="dial"></div><div id="dQ" class="dial"></div><div id="dEC" class="dial"></div>
-   <div class="shutterwrap"><button id="shutter" class="shutter" aria-label="Take photo (Space)"></button><img id="lastShot" class="last" alt="Last photo"></div></div>
-  <div class="ptabs"><button data-p="pLens" class="on">Lens &amp; focus</button><button data-p="pLight">Light</button><button data-p="pBody">Body</button><button data-p="pDisp">Display</button></div>
-  <div id="pLens" class="pane on">
-   <label>Focal length <span id="focalV"></span></label><input id="focal" type="range" min="0" max="1000">
-   <div id="focalChips" class="chips"><button data-f="14">14</button><button data-f="24">24</button><button data-f="35">35</button><button data-f="50">50</button><button data-f="85">85</button><button data-f="135">135</button><button data-f="200">200</button></div>
-   <label class="chk"><input id="keep" type="checkbox"> Keep subject same size (walk back as you zoom: shows perspective)</label>
-   <label>Focus mode <small>(tap the photo to pick a focus point)</small></label><div id="segAF" class="seg" data-key="af"></div>
-   <div id="mfRow"><label>Focus distance <span id="mfV"></span></label><input id="mf" type="range" min="0" max="1000"><div id="segPeak" class="seg" data-key="peaking"></div></div>
-   <p id="dof" class="muted small"></p></div>
-  <div id="pLight" class="pane">
-   <label>Metering</label><div id="segMeter" class="seg" data-key="meter"></div>
-   <label>White balance</label><div id="segWB" class="seg wrap" data-key="wb"></div><div id="kelRow"><label>Kelvin <span id="kelV"></span></label><input id="kel" type="range" min="2500" max="10000" step="100"></div>
-   <label>Flash <small>(guide number 40, sync 1/250)</small></label><div id="segFlash" class="seg" data-key="flash"></div>
-   <div id="flashRow"><label>Flash compensation <span id="fecV"></span></label><input id="fec" type="range" min="-9" max="6"><div id="segHSS" class="seg" data-key="hss"></div></div>
-   <label>ND filter</label><div id="segND" class="seg wrap" data-key="nd"></div></div>
-  <div id="pBody" class="pane">
-   <label>Stabilization</label><div id="segIS" class="seg" data-key="is"></div>
-   <label>Support</label><div id="segTri" class="seg" data-key="tripod"></div>
-   <label>Drive mode</label><div id="segDrive" class="seg" data-key="drive"></div>
-   <label>File format</label><div id="segRaw" class="seg" data-key="raw"></div>
-   <label>Edit exposure later (RAW vs JPEG recovery) <span id="recV"></span></label><input id="rec" type="range" min="-9" max="9">
-   <label>Dial steps</label><div id="segStops" class="seg" data-key="full"></div></div>
-  <div id="pDisp" class="pane">
-   <label>Rule-of-thirds grid</label><div id="segGrid" class="seg" data-key="grid"></div>
-   <label>Highlight warning</label><div id="segWarn" class="seg" data-key="warn"></div>
-   <label>Histogram</label><div id="segHist" class="seg" data-key="hist"></div>
-   <p class="muted small">Tip: drag a dial in a circle, scroll over it with a mouse/trackpad, or focus it and use arrow keys. Space takes a photo.</p></div>
- </aside>
-</div></section>
+</div>
 <div id="modal" class="modal"><div class="mbox"><button class="x mx" aria-label="Close">✕</button><div id="modalBody"></div></div></div>
-<script src="scenes.js"></script><script src="engine.js"></script><script src="app.js"></script><script src="ui.js"></script><script src="content.js"></script>
+<script src="scenes.js?v=3"></script><script src="engine.js?v=3"></script><script src="app.js?v=3"></script><script src="ui.js?v=3"></script><script src="content.js?v=3"></script>
 </body></html>

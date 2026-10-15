@@ -2,7 +2,7 @@
 'use strict';
 const $ = (s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const ST = { scene:'street', mode:'M', ti:42, ai:15, qi:0, ec:0, full:false, focal:35, keepSize:false, af:'AF-S', mf:8, focusPt:[0.5,0.62], afLayer:'cyclist', focusS:7,
-  peaking:false, wb:'Auto', K:5500, meter:'matrix', flash:false, fec:-1, hss:false, nd:0, is:true, tripod:false, drive:'single', raw:false, recover:0, grid:true, warn:'off', hist:true };
+  peaking:false, meterOv:true, inside:true, body:'Mirrorless', wb:'Auto', K:5500, meter:'matrix', flash:false, fec:-1, hss:false, nd:0, is:true, tripod:false, drive:'single', raw:false, recover:0, grid:true, warn:'off', hist:true };
 const WB_PRESETS = {Auto:null, Daylight:5500, Cloudy:6500, Shade:7500, Tungsten:3200, Fluorescent:4000, Flash:5500, Kelvin:'K'};
 const G = { layers:[], canvases:[], alpha:[], gain:1, meterMap:null, time:0, last:performance.now(), seed:0, dirty:true, frame:null, hist:null, clamped:false, built:'' };
 const SC = ()=>SCENES[ST.scene];
@@ -91,8 +91,11 @@ function metrics(fr){ const sub=fr.layers.find(l=>G.layers.find(x=>x.id===l.id).
 
 // ---------- render loop ----------
 function needsAnim(){ return SC().layers.some(l=>l.move||l.dist) || ST.af==='AF-C' || ST.warn==='blink' || true; }
-function sizeCanvas(){ const cv=$('#gl'); const r=cv.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1, 1.5);
-  let w=Math.round(r.width*dpr); w=Math.min(w,1280); w=Math.max(w,320); const h=Math.round(w*TEXH/TEXW); R.ensure(w,h); const ov=$('#ov'); ov.width=w; ov.height=h; G.dirty=true; }
+function layoutVF(){ const vf=$('#vf'), land=innerWidth>innerHeight; const sb=$('#scenes').offsetHeight||44;
+  if(land){ const area=$('#vfarea'); const aw=area.clientWidth, ah=innerHeight-sb; const w=Math.min(aw-16,ah*1.6); vf.style.width=w+'px'; vf.style.height=(w/1.6)+'px'; }
+  else { const W=document.documentElement.clientWidth-16; const tp=($('#topplate').offsetHeight||36)+14; const minCtl=Math.min(240,Math.max(190,innerHeight*0.3)); let h=Math.min(W/(innerHeight>760?1.15:1.3), innerHeight-sb-tp-minCtl); h=Math.max(h,Math.min(W/1.6,innerHeight-sb-tp-170)); vf.style.width=W+'px'; vf.style.height=h+'px'; } }
+function sizeCanvas(){ layoutVF(); const cv=$('#gl'); const r=cv.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1, 1.5);
+  let w=Math.round(Math.max(r.width,r.height*TEXW/TEXH)*dpr); w=Math.min(w,1280); w=Math.max(w,320); const h=Math.round(w*TEXH/TEXW); R.ensure(w,h); const ov=$('#ov'); ov.width=w; ov.height=h; G.dirty=true; }
 let histT=0, lastHud='';
 function tick(now){
   const dt=Math.min(0.1,(now-G.last)/1000); G.last=now; if(!G.paused) G.time+=dt;
@@ -111,7 +114,7 @@ function drawOverlay(fr){ const ov=$('#ov'), c=ov.getContext('2d'), w=ov.width, 
   if(fr.syncBand>0){ c.fillStyle='rgba(0,0,0,0)'; }
   const [fx,fy]=ST.focusPt; const bx=fx*w, by=fy*h, s=Math.max(18,w*0.035);
   const tgt=ST.af==='MF'?null:targetDist(G.time); const inF = ST.af==='MF' ? null : Math.abs(cocPx(fr.f,fr.N,fr.s,tgt))<1.6;
-  c.strokeStyle= ST.af==='MF' ? 'rgba(255,255,255,.6)' : inF?'#45e07a':'#ffcc33'; c.lineWidth=2;
+  const locked=G.afLock&&performance.now()-G.afLock<1500; c.strokeStyle= locked&&inF!==false ? '#45e07a' : ST.af==='MF' ? 'rgba(255,255,255,.6)' : inF?'rgba(255,255,255,.85)':'#ffcc33'; if(locked) c.lineWidth=3; c.lineWidth=2;
   const L=s*0.35; for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ c.beginPath(); c.moveTo(bx+sx*s,by+sy*s-sy*L); c.lineTo(bx+sx*s,by+sy*s); c.lineTo(bx+sx*s-sx*L,by+sy*s); c.stroke(); }
   if(ST.meter==='spot'){ c.beginPath(); c.arc(bx,by,w*0.035,0,7); c.strokeStyle='rgba(255,255,255,.5)'; c.stroke(); }
   if(ST.meter==='center'){ c.beginPath(); c.arc(w/2,h/2,w*0.18,0,7); c.strokeStyle='rgba(255,255,255,.25)'; c.setLineDash([6,6]); c.stroke(); c.setLineDash([]); }
@@ -128,12 +131,12 @@ function hud(fr){ const m=fr.meter; const ec=ST.mode==='M'?m:ST.ec/3;
   const key=[ST.mode,ST.ti,ST.ai,ST.qi,ST.ec,ST.focal,ST.wb,ST.K,ST.nd,ST.flash,Math.round(m*3),G.clamped,ST.af,ST.meter,ST.drive,ST.raw].join();
   const met=metrics(fr); $('#phys').innerHTML = `Subject blur <b>${met.subMot.toFixed(1)}px</b> · Focus blur <b>${met.subBlur.toFixed(1)}px</b> · Background blur <b>${met.bgBlur.toFixed(0)}px</b> · Shake <b>${fr.shake.toFixed(1)}px</b> · Focus <b>${fmtDist(fr.s)}</b>`;
   if(key===lastHud) return; lastHud=key;
-  $('#iMode').textContent=ST.mode; $('#iT').textContent=SHUTTER_LABELS[ST.ti]; $('#iN').textContent='f/'+APERTURE_LABELS[ST.ai]; $('#iISO').textContent='ISO '+ISO_LABELS[ST.qi]+(ST.mode==='Auto'?' (auto)':'');
+  $('#iMode').textContent=ST.mode; $('#iT').textContent=SHUTTER_LABELS[ST.ti]; $('#iN').textContent='f/'+APERTURE_LABELS[ST.ai]; $('#iISO').textContent='ISO'+ISO_LABELS[ST.qi];
   $('#iF').textContent=ST.focal+'mm'; $('#iWB').textContent='WB '+(ST.wb==='Kelvin'?ST.K+'K':ST.wb); $('#iExtra').textContent=[ST.nd?'ND'+(ST.nd===3?'8':ST.nd===6?'64':'1000'):'',ST.flash?'⚡':'',ST.raw?'RAW':'JPEG',ST.drive==='burst'?'▶▶':''].filter(Boolean).join(' ');
   // meter scale
   const sc=$('#meterScale'); const pos=Math.max(-3.2,Math.min(3.2,ST.mode==='M'?m:ST.ec/3)); $('#meterNeedle').style.left=(50+pos/3.4*50)+'%';
   $('#meterNeedle').classList.toggle('over', Math.abs(ST.mode==='M'?m:0)>3 || G.clamped); sc.title='Meter: '+fmtStops(Math.round(m*3)/3,true)+' EV';
-  $('#meterVal').textContent=(ST.mode==='M'? fmtStops(Math.round(m*3)/3,true)+' EV' : 'EC '+fmtStops(ST.ec/3,true)) + (G.clamped?' ⚠ out of range':'');
+  $('#meterVal').textContent=(ST.mode==='M'? fmtStops(Math.round(m*3)/3,true)+'EV' : 'EC'+fmtStops(ST.ec/3,true)) + (G.clamped?' ⚠ out of range':'');
   $('#iT').classList.toggle('blink',G.clamped&&ST.mode!=='Tv'); $('#iN').classList.toggle('blink',G.clamped&&ST.mode==='Tv');
   syncDials();
 }
