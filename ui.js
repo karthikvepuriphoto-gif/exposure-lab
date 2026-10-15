@@ -175,24 +175,25 @@ function load(){ try{ const s=JSON.parse(localStorage.getItem('el_state')||'null
 function updPlate(){ const n=ROLL.length; $('#shotsLeft').textContent='['+Math.max(0,999-n)+']'; $('#batLvl').style.width=Math.max(15,90-n*1.5)+'%'; }
 // ---------- "how it works inside" animation ----------
 function insideAnim(){ const cv=$('#inside'); cv.classList.add('show'); const c=cv.getContext('2d'), W=cv.width, H=cv.height; const t=tOf(ST.ti), N=nOf(ST.ai), dslr=ST.body==='DSLR';
-  const expDur=Math.max(0.25,Math.min(1.6,0.25+Math.log2(1+t*8)*0.35)); const ph=dslr?[0.18,0.12,expDur,0.12,0.18]:[0.12,0.12,expDur,0.12,0.12]; const total=ph.reduce((a,b)=>a+b)+0.5; const t0=performance.now();
-  const iris=(x,y,r,open)=>{ c.fillStyle='#222'; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); const ro=r*open; c.fillStyle='#9fd3ff'; c.beginPath(); for(let i=0;i<7;i++){ const a=i/7*Math.PI*2-Math.PI/2; const px=x+Math.cos(a)*ro, py=y+Math.sin(a)*ro; i?c.lineTo(px,py):c.moveTo(px,py);} c.fill(); c.strokeStyle='#555'; c.beginPath(); c.arc(x,y,r,0,7); c.stroke(); };
+  const expDur=Math.max(0.12,Math.min(0.7,0.12+Math.log2(1+t*8)*0.25)); const ph=dslr?[0.12,0.08,expDur,0.08,0.12]:[0.08,0.08,expDur,0.08,0.08]; const total=ph.reduce((x,y)=>x+y)+0.25; const t0=performance.now();
+  const open=Math.max(0.16,Math.pow(1.4/N,0.6));
+  const iris=(x,y,r,o)=>{ c.save(); c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle='#2b2d33'; c.fill(); c.clip();
+    const ro=r*o; c.beginPath(); for(let i=0;i<7;i++){ const a=i/7*Math.PI*2-Math.PI/2; const px=x+Math.cos(a)*ro, py=y+Math.sin(a)*ro; i?c.lineTo(px,py):c.moveTo(px,py);} c.closePath(); c.fillStyle='#9fd3ff'; c.fill();
+    c.strokeStyle='#16171b'; c.lineWidth=1.5; for(let i=0;i<7;i++){ const a=i/7*Math.PI*2-Math.PI/2; c.beginPath(); c.moveTo(x+Math.cos(a)*ro,y+Math.sin(a)*ro); c.lineTo(x+Math.cos(a+1.2)*r*1.2,y+Math.sin(a+1.2)*r*1.2); c.stroke(); }
+    c.restore(); c.strokeStyle='#666'; c.lineWidth=1.5; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.stroke(); };
   const go=now=>{ const s=(now-t0)/1000; let k=s, stage=0; for(;stage<ph.length&&k>ph[stage];stage++) k-=ph[stage]; const p=stage<ph.length?k/ph[stage]:1;
-    c.clearRect(0,0,W,H); c.fillStyle='#0b0c0e'; c.fillRect(0,0,W,H); c.font='600 11px system-ui'; c.fillStyle='#ccc';
-    const open=Math.max(0.12,1.4/N); const stopped= stage===0?1-p*(1-open): stage>=4?open+(1-open)*p: stage>=1&&stage<4?open:1;
-    iris(40,70,28,stage>=5?1:stopped); c.fillText('aperture f/'+APERTURE_LABELS[ST.ai],6,128);
-    // light path
-    const sx=200, sy=30, sh=80; c.fillStyle='#2a2d33'; c.fillRect(sx,sy,14,sh); c.fillStyle='#ccc'; c.fillText('sensor',176,128);
-    let mirrorUp=false;
-    if(dslr){ const ang= stage===0? p : stage>=1&&stage<=3?1: stage===4?1-p:0; mirrorUp=ang>0.95; const mx=120,my=70; const a=-Math.PI/4+(Math.PI/4+0.05)*ang*1; 
-      c.strokeStyle='#e6e6e6'; c.lineWidth=4; c.beginPath(); c.moveTo(mx-Math.cos(a)*30,my+Math.sin(a)*30); c.lineTo(mx+Math.cos(a)*30,my-Math.sin(a)*30); c.stroke(); c.lineWidth=1;
-      c.fillStyle='#888'; c.fillText(ang>0.5?'mirror up':'mirror → viewfinder',88,18); }
-    else { c.fillStyle='#888'; c.fillText('no mirror: sensor feeds EVF',78,18); }
-    // shutter curtains
-    const front= stage<=1? (stage===1?1-p:1) : 0; const rear= stage===3? p : stage>3?1:0;
-    c.fillStyle='#555'; c.fillRect(sx-12,sy,8,sh*front); c.fillStyle='#777'; c.fillRect(sx-12,sy+sh*(1-rear),8,sh*rear);
-    const exposing= stage===2 || (stage===1&&p>0.5) || (stage===3&&p<0.5);
-    if(exposing&&(!dslr||mirrorUp||stage===2)){ c.fillStyle='rgba(255,230,140,.35)'; c.beginPath(); c.moveTo(68,60); c.lineTo(sx,sy); c.lineTo(sx,sy+sh); c.lineTo(68,80); c.fill(); c.fillStyle='#ffd27a'; c.fillRect(sx,sy,14,sh); }
-    c.fillStyle='#fff'; c.font='700 12px ui-monospace,monospace'; c.fillText(['opening…','front curtain','exposing '+SHUTTER_LABELS[ST.ti],'rear curtain','resetting',''][Math.min(stage,5)],100,145);
+    c.clearRect(0,0,W,H); c.fillStyle='#0b0c0e'; c.fillRect(0,0,W,H);
+    const st= stage===0?1-p*(1-open): stage>=1&&stage<=3?open: stage===4?open+(1-open)*p:1;
+    const sx=196, sy=34, sh=78, exposing= stage===2||(stage===1&&p>0.5)||(stage===3&&p<0.5);
+    if(exposing){ c.fillStyle='rgba(255,220,130,.28)'; c.beginPath(); c.moveTo(48,73-30*st); c.lineTo(sx,sy); c.lineTo(sx,sy+sh); c.lineTo(48,73+30*st); c.closePath(); c.fill(); }
+    iris(48,73,32,st);
+    c.fillStyle='#2a2d33'; c.fillRect(sx,sy,12,sh); if(exposing){ c.fillStyle='#ffd27a'; c.fillRect(sx,sy,12,sh); }
+    const front= stage<=1?(stage===1?1-p:1):0, rear= stage===3?p:stage>3?1:0;
+    c.fillStyle='#5a5d64'; c.fillRect(sx-10,sy,7,sh*front); c.fillStyle='#8a8d94'; c.fillRect(sx-10,sy+sh*(1-rear),7,sh*rear);
+    if(dslr){ const ang= stage===0?p: stage>=1&&stage<=3?1: stage===4?1-p:0; const mx=125,my=73, a=Math.PI/4*(1-ang)+0.0; // 45° down -> flat up
+      const yy=my-ang*42; c.strokeStyle='#e6e6e6'; c.lineWidth=3; c.beginPath(); c.moveTo(mx-24*Math.cos(a),yy+24*Math.sin(a)); c.lineTo(mx+24*Math.cos(a),yy-24*Math.sin(a)); c.stroke(); }
+    c.font='600 12px system-ui,sans-serif'; c.fillStyle='#aab'; c.textAlign='left';
+    c.fillText('f/'+APERTURE_LABELS[ST.ai],28,128); c.fillText('sensor',180,128); c.fillText(dslr?'DSLR':'Mirrorless',6,16);
+    c.fillStyle='#fff'; c.textAlign='right'; c.fillText(['stop down','front curtain','exposing '+SHUTTER_LABELS[ST.ti],'rear curtain','reset',''][Math.min(stage,5)],W-6,16);
     if(s<total) requestAnimationFrame(go); else cv.classList.remove('show'); };
   requestAnimationFrame(go); }

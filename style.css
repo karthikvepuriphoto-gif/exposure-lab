@@ -122,3 +122,13 @@ input[type=range]{width:100%;accent-color:var(--ac);height:32px}
 .controls{justify-content:center;gap:clamp(8px,2.5dvh,26px)}
 .changed{top:auto;bottom:30px;font-size:12.5px;padding:5px 10px}
 .changed br{display:none}.changed{white-space:normal}
+
+/* v5: scene chips overlaid on the photo, small inset */
+.vf .scenes{position:absolute;left:0;right:48px;bottom:4px;width:auto;padding:4px 6px;z-index:3;gap:5px}
+.vf .scenes button{background:rgba(10,10,12,.62);border-color:rgba(255,255,255,.18);min-height:32px;padding:4px 9px;font-size:12px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.vf .scenes button.on{background:rgba(70,35,20,.8);border-color:var(--ac)}
+.evfinfo{bottom:46px}
+.changed{bottom:72px}
+.vf canvas.inside{inset:auto 6px 46px auto;width:min(30%,128px)}
+.inside{width:min(30%,128px)}
+.chips{overflow:visible}.chip{flex:1 1 0;min-width:0;padding:4px 2px}.chip small{font-size:9.5px;letter-spacing:.2px}.chip b{font-size:13px}

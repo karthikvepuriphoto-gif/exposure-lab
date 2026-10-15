@@ -91,9 +91,9 @@ function metrics(fr){ const sub=fr.layers.find(l=>G.layers.find(x=>x.id===l.id).
 
 // ---------- render loop ----------
 function needsAnim(){ return SC().layers.some(l=>l.move||l.dist) || ST.af==='AF-C' || ST.warn==='blink' || true; }
-function layoutVF(){ const vf=$('#vf'), land=innerWidth>innerHeight; const sb=$('#scenes').offsetHeight||44;
+function layoutVF(){ const vf=$('#vf'), land=innerWidth>innerHeight; const sb=0;
   if(land){ const area=$('#vfarea'); const aw=area.clientWidth, ah=innerHeight-sb; const w=Math.min(aw-16,ah*1.6); vf.style.width=w+'px'; vf.style.height=(w/1.6)+'px'; }
-  else { const W=document.documentElement.clientWidth-16; const tp=($('#topplate').offsetHeight||36)+14; const minCtl=Math.min(240,Math.max(190,innerHeight*0.3)); let h=Math.min(W/(innerHeight>760?1.15:1.3), innerHeight-sb-tp-minCtl); h=Math.max(h,Math.min(W/1.6,innerHeight-sb-tp-170)); vf.style.width=W+'px'; vf.style.height=h+'px'; } }
+  else { const W=document.documentElement.clientWidth-16; const tp=($('#topplate').offsetHeight||36)+14; const minCtl=Math.min(240,Math.max(190,innerHeight*0.3)); const minC=innerHeight<700?190:205; let h=Math.min(Math.max(innerHeight*0.5,W/1.3), innerHeight-tp-minC); h=Math.max(h,Math.min(W/1.6,innerHeight-tp-170)); vf.style.width=W+'px'; vf.style.height=h+'px'; } }
 function sizeCanvas(){ layoutVF(); const cv=$('#gl'); const r=cv.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1, 1.5);
   let w=Math.round(Math.max(r.width,r.height*TEXW/TEXH)*dpr); w=Math.min(w,1280); w=Math.max(w,320); const h=Math.round(w*TEXH/TEXW); R.ensure(w,h); const ov=$('#ov'); ov.width=w; ov.height=h; G.dirty=true; }
 let histT=0, lastHud='';
