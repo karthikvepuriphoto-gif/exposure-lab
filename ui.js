@@ -38,14 +38,14 @@ class Wheel {
   draw(){ const cv=this.cv, r=cv.getBoundingClientRect(); if(!r.width||!this.def) return; const dpr=Math.min(2,window.devicePixelRatio||1);
     const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
     const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); const w=r.width, h=r.height, D=this.def, dis=D.disabled(); c.clearRect(0,0,w,h);
-    this.sp = Math.max(56, Math.min(84, w/5.5));
+    this.sp = Math.max(74, Math.min(100, w/4.4));
     const cx=w/2, n=D.labels.length, k=this.stepSize();
     for(let i=Math.max(0,Math.floor(this.pos-w/2/this.sp)-1); i<=Math.min(n-1,Math.ceil(this.pos+w/2/this.sp)+1); i++){
       const x=cx+(i-this.pos)*this.sp, dist=Math.abs(x-cx)/(w/2); const al=Math.max(0,1-dist*0.85);
       const major=i%3===0; c.fillStyle=`rgba(255,255,255,${(major?0.55:0.3)*al})`; c.fillRect(x-1,h-(major?22:14),2,major?16:9);
       for(let m=1;m<3;m++){ const xm=x+m*this.sp/3; c.fillStyle=`rgba(255,255,255,${0.12*al})`; c.fillRect(xm-0.5,h-11,1,6); }
       if(k>1&&i%k) continue;
-      const near=Math.abs(i-this.pos)<0.5; c.font=`${near?800:600} ${near?Math.min(22,h*0.26):Math.min(15,h*0.19)}px ui-monospace,Menlo,monospace`; c.textAlign='center'; c.textBaseline='middle';
+      const near=Math.abs(i-this.pos)<0.5; c.font=`${near?800:600} ${near?Math.min(21,h*0.25):Math.min(13.5,h*0.18)}px ui-monospace,Menlo,monospace`; c.textAlign='center'; c.textBaseline='middle';
       c.fillStyle= near? (dis?'#8fb4d9':'#fff') : `rgba(220,225,235,${al*0.8})`; c.fillText((D.prefix||'')+D.labels[i],x,h*0.42); }
     const g=c.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(12,13,16,1)'); g.addColorStop(0.18,'rgba(12,13,16,0)'); g.addColorStop(0.82,'rgba(12,13,16,0)'); g.addColorStop(1,'rgba(12,13,16,1)'); c.fillStyle=g; c.fillRect(0,0,w,h);
     c.fillStyle=dis?'#7a8a99':'#ff5a36'; c.beginPath(); c.moveTo(cx-8,0); c.lineTo(cx+8,0); c.lineTo(cx,10); c.fill(); c.fillRect(cx-1.5,h-26,3,24);
